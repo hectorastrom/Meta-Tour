@@ -1,12 +1,22 @@
+from tabnanny import check
 import cv2 as cv
 import os
 
+# Check if there is an images and stitches folder
+def checkFolder(folderName: str):
+    currentPath = os.getcwd()
+    folderPath = os.path.join(currentPath, folderName)
+    if not os.path.isdir(folderPath):
+        print(f"[INFO]: {folderName} not found, automatically created new folder")
+        os.mkdir(folderPath)
+        return False
+    return True
+
+if (checkFolder("Images") and checkFolder("Stitches")):
+    print("[INFO]: All necessary folders exist")
 
 imageFolder = 'Images'
 folders = os.listdir(imageFolder)
-if not folders:
-    print("[ERROR]: No Images Folder")
-    exit(1)
 
 # Goes through all folders in images folder (rooms) and takes images
 for room in folders[2:3]:
