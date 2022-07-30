@@ -1,6 +1,8 @@
-from tabnanny import check
 import cv2 as cv
 import os
+import time
+
+start_time = time.time()
 
 # Check if there is an images and stitches folder
 def checkFolder(folderName: str):
@@ -19,7 +21,7 @@ imageFolder = 'Images'
 folders = os.listdir(imageFolder)
 
 # Goes through all folders in images folder (rooms) and takes images
-for room in folders[2:3]:
+for room in folders[4:]:
     path = imageFolder + "/" + room
     images = []
     myList = os.listdir(path)
@@ -42,3 +44,5 @@ for room in folders[2:3]:
         print(f"[ERROR] Not enough keypoints in images of {room}")
     else: 
         print(f"[ERROR]: {room} Status {status}")
+
+    print(f"[INFO]: Time elapsed for {room} was {time.time()-start_time}")
