@@ -138,7 +138,7 @@ def videoToPanorama(dataName : str, videoName : str, scaleCoeff: int):
     (status,result) = stitcher.stitch(images)
     if (status == 0):
         print(f"[SUCCESS]: Image Sphere Generated for {videoName}")
-        cv.imwrite(f"Stitches/stitch-{videoName}.jpg", result)
+        cv.imwrite(f"Stitches/{videoName[:-5]}_stitch.jpg", result)
         print(f"[INFO]: Time elapsed to stitch {videoName} was {round(time.time()-start_time, 3)} seconds.")
         cv.imshow(videoName,result)
         cv.waitKey(0)
