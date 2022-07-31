@@ -44,14 +44,14 @@ def main():
         print(f"[INFO]: Time elapsed for {room} was {time.time()-start_time}")
 
 
-def convert_milli_to_frames(milli: int, totalMilli: int, totalFrames : int):
+def convert_milli_to_frames(milli : int, totalMilli: int, totalFrames : int):
     """Returns the frame in a video given a specific timestamp in milliseconds"""
-    ratio = int(milli/totalMilli)
-    return int(ratio*totalFrames)
+    ratio = milli/totalMilli
+    return np.floor(ratio*totalFrames)
 
 
 def select_timestamps(rotations, distance: float):
-    """Creates a list of all the desired timestamps for a given rotation distance between frames. Selects the frame closest to the next step. It will return a list of length: 360/distance timestamps"""
+    """Creates a list of all the desired timestamps for a given rotation distance between frames. Selects the frame closest to the next step. It will return a list of length: 360/distance full of timestamps in milliseconds."""
     if distance <= 0: 
         print("[ERROR]: Distance must be > 0")
         exit(1)
@@ -59,7 +59,7 @@ def select_timestamps(rotations, distance: float):
     timestamps = []
     # Need to store where we start
     startRotation = rotations[0][0]
-    timestamps.append(rotations[0])
+    timestamps.append(rotations[0][1])
     # We want a point every distance degrees, so 360/distance points + 1 for the start
     length = 360//distance+1
     for i in range(1, length):
@@ -67,7 +67,7 @@ def select_timestamps(rotations, distance: float):
         desRot = startRotation + i*distance
         # Gets the index of where desired rotation would fit in our array, checks to make sure we don't go out of bounds
         index = max(np.searchsorted(rotations[:,0], desRot) -1, 0)
-        timestamps.append(rotations[index])
+        timestamps.append(rotations[index][1])
     return timestamps
 
 
@@ -75,12 +75,15 @@ def load_video_frames(vidcap, frameList: list):
     """Returns a list of all the frames of a video rotates 180 degrees from a list of integers specifying the desired frames"""
     frames = []
     # Read in image and success status
-    success,image = vidcap.read()
-    count = 0
-    # Rotate image 180 and add to frames list
-    frames.append(cv.rotate(image, cv.ROTATE_180))
-    # while success: 
+    for frame in frameList:
+        vidcap.set(1, frame)
+        success,image = vidcap.read()
+        if success:
+            frames.append(image)
+            cv.imshow(f"{frame}", image)
+            cv.waitKey(2)
 
+    return frames
 
 def load_json(filename: str):
     """Returns a dictionary from a json file"""
@@ -106,6 +109,8 @@ totalFrames = vidcap.get(7)
 # Creates a list of tuples with all timestamps and y absolute rotations (relevant rotation). 
 # Once this is in radians instead of degrees, multiply row[9] by np.pi/180
 rotations = np.array([(row[9], row[0]) for row in tourData[::]])
+totalMilli = rotations[-1][1]
+print("Total milli", totalMilli)
 # Sorts the array by orientation ascending (starts around 0, ends around 360)
 rotations = rotations[rotations[:, 0].argsort()]
 
@@ -114,5 +119,6 @@ rotations = rotations[rotations[:, 0].argsort()]
 # plt.show(block=True)
 
 # Want an image every 12 or so degrees
-print(select_timestamps(rotations, 12))
-load_video_frames(vidcap, [1])
+timestamps = np.array(select_timestamps(rotations, 12))
+frames = convert_milli_to_frames(timestamps, totalMilli, totalFrames)
+load_video_frames(vidcap, frames)
