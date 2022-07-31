@@ -110,7 +110,7 @@ def check_folder(folderName: str):
 
 
 def videoToPanorama(dataName : str, videoName : str, scaleCoeff: int):
-    """Takes in the name of a json file with odometry data and the name of a video file and stitches a panorama stored in stitches/"""
+    """Takes in the name of a json file with odometry data and the name of a video file and stitches a panorama stored in stitches/. Files whose names are inputted should exist in the most outside directory (same directory as imageStitch.py)"""
     tourData = load_json(dataName)
     vidcap = cv.VideoCapture(videoName)
     totalFrames = vidcap.get(7)
