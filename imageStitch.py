@@ -1,20 +1,24 @@
+from multiprocessing.sharedctypes import Value
 import cv2 as cv
 import os
 import time
 import json
 import numpy as np
 from matplotlib import pyplot as plt
+import sys
 
 # Suppresses scientific notation
 np.set_printoptions(suppress=True)
 
-def main():
 
+def stitch_images():
+    """NOT IN USE. Iterates through and stiches images from the images folder, storing them in Stitches/"""
     imageFolder = 'Images'
     folders = os.listdir(imageFolder)
 
     # Goes through all folders in images folder (rooms) and takes images
-    for room in folders[4:]:
+    for room in folders:
+        start_time = time.time()
         path = imageFolder + "/" + room
         images = []
         myList = os.listdir(path)
@@ -32,6 +36,7 @@ def main():
         if (status == 0):
             print(f"[SUCCESS]: Image Sphere Generated for {room}")
             cv.imwrite(f"Stitches/stitch-{room}.jpg", result)
+            print(f"[INFO]: Time elapsed to stitch {room} was {round(time.time()-start_time, 3)} seconds.")
             cv.imshow(room,result)
             cv.waitKey(0)
         elif status == 1:
@@ -39,7 +44,6 @@ def main():
         else: 
             print(f"[ERROR]: {room} Status {status}")
 
-        print(f"[INFO]: Time elapsed for {room} was {time.time()-start_time}")
 
 
 def convert_milli_to_frames(milli : int, totalMilli: int, totalFrames : int):
@@ -70,7 +74,7 @@ def select_timestamps(rotations, distance: float):
 
 
 def load_video_frames(vidcap, frameList: list, resizeCoeff: float, flip: bool):
-    """Returns a list of all the frames of a video rotates 180 degrees from a list of integers specifying the desired frames"""
+    """Returns a list of all the images of frames of the video given a frame list. Each image is resized by the resizeCoeff (1 being normal scale), and rotated 180 degrees based on if flip is True or not."""
     frames = []
     # Read in image and success status
     for frame in frameList:
@@ -104,14 +108,9 @@ def check_folder(folderName: str):
         return False
     return True
 
-if (check_folder("Data") and check_folder("Stitches")):
-    print("[INFO]: All necessary folders exist")
 
-# folders = os.listdir("Data")
-
-
-# Prints rounded values for each value in each row of the JSON file
-def videoToPanorama(dataName, videoName):
+def videoToPanorama(dataName : str, videoName : str, scaleCoeff: int):
+    """Takes in the name of a json file with odometry data and the name of a video file and stitches a panorama stored in stitches/"""
     tourData = load_json(dataName)
     vidcap = cv.VideoCapture(videoName)
     totalFrames = vidcap.get(7)
@@ -130,9 +129,9 @@ def videoToPanorama(dataName, videoName):
     # Want an image every 12 or so degrees
     timestamps = np.array(select_timestamps(rotations, 12))
     frames = convert_milli_to_frames(timestamps, totalMilli, totalFrames)
-    images = load_video_frames(vidcap, frames, 1, True)
+    images = load_video_frames(vidcap, frames, scaleCoeff, True)
     print("[INFO]: Images gathered")
-    print("[INFO]: Stiching images...")
+    print("[INFO]: Stitching images...")
 
     start_time = time.time()
     stitcher = cv.Stitcher_create()
@@ -152,6 +151,33 @@ def videoToPanorama(dataName, videoName):
         return 1
     
 
-videoToPanorama("hectordata.json", "hectorvid.webm")
+# check for valid num of arguments
+if len(sys.argv) != 4:
+    print("[ERROR]: usage: python imageStitch.py 'datafile.json' 'videofile.webm' float: scaleCoefficient")
+    exit(1)
+
+jsonFile = sys.argv[1]
+videoFile = sys.argv[2]
+# Test if scalecoefficient is inputted as an integer
+try:
+    scaleCoeff = float(sys.argv[3])
+except ValueError: 
+    print("[ERROR] scale coefficient not float")
+    exit(1)
+
+if not jsonFile.endswith(".json"): 
+    print("First argument must be name of JSON file")
+    exit(1)
+
+if not videoFile.endswith(".webm"): 
+    # Technically we can accept a bunch of video file types I think, but since this
+    # is what we've been getting from the website this is what we have for now
+    print("First argument must be name of a webm file")
+    exit(1)
+
+if (check_folder("Data") and check_folder("Stitches")):
+    print("[INFO]: All necessary folders exist")
+
+videoToPanorama(jsonFile, videoFile, scaleCoeff=1)
 
 
