@@ -5,6 +5,8 @@ import json
 import numpy as np
 from matplotlib import pyplot as plt
 
+# Suppresses scientific notation
+np.set_printoptions(suppress=True)
 
 def main():
     start_time = time.time()
@@ -41,51 +43,33 @@ def main():
 
         print(f"[INFO]: Time elapsed for {room} was {time.time()-start_time}")
 
+
 def convert_milli_to_frames(milli: int, totalMilli: int, totalFrames : int):
     """Returns the frame in a video given a specific timestamp in milliseconds"""
     ratio = int(milli/totalMilli)
     return int(ratio*totalFrames)
 
-def select_timestamps(rotations, distance: float, sensitivity: int):
+
+def select_timestamps(rotations, distance: float):
     """Creates a list of all the desired timestamps for a given rotation distance between frames. Selects the frame closest to the next step. It will return a list of length: 360/distance timestamps"""
     if distance <= 0: 
         print("[ERROR]: Distance must be > 0")
         exit(1)
+    # Timestamps stores our relevant timestamps
     timestamps = []
-    totalMeasurements = len(rotations)
-    startRotation = rotations[0][1]
+    # Need to store where we start
+    startRotation = rotations[0][0]
     timestamps.append(rotations[0])
-    length = int(360/distance)+1
-    # Under ideal conditions, we would expect the user to rotate 360 degrees at a constant rate throughout the video
-    # We can then assume ideal conditions to approximate the timestamp a rotation would be at, then adjust up or down accordingly until we have
-    # the timestamp with the closest rotation to the desired rotation
-    def diff(a, b):
-        return abs(a-b)
+    # We want a point every distance degrees, so 360/distance points + 1 for the start
+    length = 360//distance+1
     for i in range(1, length):
-        # Get desired rotation (ideally this rotation would be a measurement and we would save it as an image)
-        desRot = startRotation + distance * i
-        # Loop back around if it goes over 360 degrees
-        desRot = desRot if desRot <= 360 else desRot-360
-        # Approximate where we would expect to find the desired rotation under ideal conditions
-        index = int((distance * i / 360) * totalMeasurements) - 1
-        rot = rotations[index][1]
-        print(index)
-        # See if moving up 1 in the array gets a closer measurement to our desired measurement
-        while index < totalMeasurements-sensitivity-1 and diff(sum(rotations[index+1: index+sensitivity+1, 1])/sensitivity, desRot) < diff(rot, desRot):
-            index += 1
-            rot = rotations[index][1]
-        # See if moving down 1 in the array gets a closer measurement to our desired measurement
-        while index > sensitivity-1 and diff(sum(rotations[index-sensitivity:index, 1])/sensitivity, desRot) < diff(rot, desRot):
-            index -= 1
-            rot = rotations[index][1]
-        print(index)
-        print()
-        # Now that we should have the closest measured rotation to desired, we can add it to timestamps
+        # Finding our desired rotation
+        desRot = startRotation + i*distance
+        # Gets the index of where desired rotation would fit in our array, checks to make sure we don't go out of bounds
+        index = max(np.searchsorted(rotations[:,0], desRot) -1, 0)
         timestamps.append(rotations[index])
-
     return timestamps
 
-    # 0 1 2 3 4 5 6 
 
 def load_video_frames(vidcap, frameList: list):
     """Returns a list of all the frames of a video rotates 180 degrees from a list of integers specifying the desired frames"""
@@ -95,8 +79,6 @@ def load_video_frames(vidcap, frameList: list):
     count = 0
     # Rotate image 180 and add to frames list
     frames.append(cv.rotate(image, cv.ROTATE_180))
-    cv.imshow("Frame 1", frames[0])
-    cv.waitKey(0)
     # while success: 
 
 
@@ -104,6 +86,7 @@ def load_json(filename: str):
     """Returns a dictionary from a json file"""
     with open(filename, "r") as file:
         return json.load(file)
+
 
 # Check if there is an images and stitches folder
 def check_folder(folderName: str):
@@ -122,13 +105,14 @@ vidcap = cv.VideoCapture("videospin.webm")
 totalFrames = vidcap.get(7)
 # Creates a list of tuples with all timestamps and y absolute rotations (relevant rotation). 
 # Once this is in radians instead of degrees, multiply row[9] by np.pi/180
-rotations = np.array([(row[0], row[9]) for row in tourData[::]])
-# plt.scatter(rotations[:,0], rotations[:,1])
+rotations = np.array([(row[9], row[0]) for row in tourData[::]])
+# Sorts the array by orientation ascending (starts around 0, ends around 360)
+rotations = rotations[rotations[:, 0].argsort()]
+
+# Printing scatter plot of index against rotation
+# plt.scatter(range(len(rotations)), rotations[:,0])
 # plt.show(block=True)
 
-# print("Rotations:")
-# print([round(rot[1],3) for rot in rotations[::]])
-print()
 # Want an image every 12 or so degrees
-print(select_timestamps(rotations, 12, 20))
-# load_video_frames(vidcap, [1])
+print(select_timestamps(rotations, 12))
+load_video_frames(vidcap, [1])
