@@ -9,9 +9,6 @@ from matplotlib import pyplot as plt
 np.set_printoptions(suppress=True)
 
 def main():
-    start_time = time.time()
-    if (check_folder("Images") and check_folder("Stitches")):
-        print("[INFO]: All necessary folders exist")
 
     imageFolder = 'Images'
     folders = os.listdir(imageFolder)
@@ -101,48 +98,60 @@ def check_folder(folderName: str):
     currentPath = os.getcwd()
     folderPath = os.path.join(currentPath, folderName)
     if not os.path.isdir(folderPath):
-        print(f"[INFO]: {folderName} not found, automatically created new folder")
+        print(f"[INFO]: '{folderName}' not found, automatically created new folder")
         os.mkdir(folderPath)
+        exit(1)
         return False
     return True
 
-# Prints rounded values for each value in each row of the json file
-tourData = load_json("tour_data.json")
-videoName = "videospin.webm"
-vidcap = cv.VideoCapture(videoName)
-totalFrames = vidcap.get(7)
-# Creates a list of tuples with all timestamps and y absolute rotations (relevant rotation). 
-# Once this is in radians instead of degrees, multiply row[9] by np.pi/180
-rotations = np.array([(row[9], row[0]) for row in tourData[::]])
-totalMilli = rotations[-1][1]
+if (check_folder("Data") and check_folder("Stitches")):
+    print("[INFO]: All necessary folders exist")
 
-# Sorts the array by orientation ascending (starts around 0, ends around 360)
-rotations = rotations[rotations[:, 0].argsort()]
-print("[INFO]: Rotations Sorted")
+# folders = os.listdir("Data")
 
-# Printing scatter plot of index against rotation
-# plt.scatter(range(len(rotations)), rotations[:,0])
-# plt.show(block=True)
 
-# Want an image every 12 or so degrees
-timestamps = np.array(select_timestamps(rotations, 12))
-frames = convert_milli_to_frames(timestamps, totalMilli, totalFrames)
-images = load_video_frames(vidcap, frames, 1, True)
-print("[INFO]: Images gathered")
-print("[INFO]: Stiching images...")
+# Prints rounded values for each value in each row of the JSON file
+def videoToPanorama(dataName, videoName):
+    tourData = load_json(dataName)
+    vidcap = cv.VideoCapture(videoName)
+    totalFrames = vidcap.get(7)
+    # Creates a list of tuples with all timestamps and y absolute rotations (relevant rotation). 
+    rotations = np.array([(row[9]*180/np.pi, row[0]) for row in tourData[::]])
+    totalMilli = rotations[-1][1]
 
-start_time = time.time()
-stitcher = cv.Stitcher_create()
-(status,result) = stitcher.stitch(images)
-if (status == 0):
-    print(f"[SUCCESS]: Image Sphere Generated for {videoName}")
-    cv.imwrite(f"Stitches/stitch-{videoName}.jpg", result)
-    print(f"[INFO]: Time elapsed to stitch {videoName} was {round(time.time()-start_time, 3)} seconds.")
-    cv.imshow(videoName,result)
-    cv.waitKey(0)
-elif status == 1:
-    print(f"[ERROR] Not enough keypoints in images of {videoName}")
-else: 
-    print(f"[ERROR]: {videoName} Status {status}")
+    # Sorts the array by orientation ascending (starts around 0, ends around 360)
+    rotations = rotations[rotations[:, 0].argsort()]
+    print("[INFO]: Rotations Sorted")
+
+    # Printing scatter plot of index against rotation
+    # plt.scatter(range(len(rotations)), rotations[:,0])
+    # plt.show(block=True)
+
+    # Want an image every 12 or so degrees
+    timestamps = np.array(select_timestamps(rotations, 12))
+    frames = convert_milli_to_frames(timestamps, totalMilli, totalFrames)
+    images = load_video_frames(vidcap, frames, 1, True)
+    print("[INFO]: Images gathered")
+    print("[INFO]: Stiching images...")
+
+    start_time = time.time()
+    stitcher = cv.Stitcher_create()
+    (status,result) = stitcher.stitch(images)
+    if (status == 0):
+        print(f"[SUCCESS]: Image Sphere Generated for {videoName}")
+        cv.imwrite(f"Stitches/stitch-{videoName}.jpg", result)
+        print(f"[INFO]: Time elapsed to stitch {videoName} was {round(time.time()-start_time, 3)} seconds.")
+        cv.imshow(videoName,result)
+        cv.waitKey(0)
+        return result
+    elif status == 1:
+        print(f"[ERROR] Not enough keypoints in images of {videoName}")
+        return 1
+    else: 
+        print(f"[ERROR]: {videoName} Status {status}")
+        return 1
+    
+
+videoToPanorama("hectordata.json", "hectorvid.webm")
 
 
