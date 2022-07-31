@@ -21,6 +21,7 @@ def main():
         path = imageFolder + "/" + room
         images = []
         myList = os.listdir(path)
+        # Reads images from folder and adds them to images list, resizing them
         for imgName in myList:
             curImg = cv.imread(f'{path}/{imgName}')
             curImg = cv.resize(curImg, (0,0), None, .5, .5)
@@ -71,7 +72,7 @@ def select_timestamps(rotations, distance: float):
     return timestamps
 
 
-def load_video_frames(vidcap, frameList: list):
+def load_video_frames(vidcap, frameList: list, resizeCoeff: float, flip: bool):
     """Returns a list of all the frames of a video rotates 180 degrees from a list of integers specifying the desired frames"""
     frames = []
     # Read in image and success status
@@ -79,9 +80,12 @@ def load_video_frames(vidcap, frameList: list):
         vidcap.set(1, frame)
         success,image = vidcap.read()
         if success:
+            image = cv.resize(image, (0,0), None, resizeCoeff, resizeCoeff)
+            if flip:
+                image = cv.rotate(image, cv.ROTATE_180)
             frames.append(image)
-            cv.imshow(f"{frame}", image)
-            cv.waitKey(2)
+            # cv.imshow(f"{frame}", image)
+            # cv.waitKey(2)
 
     return frames
 
@@ -104,15 +108,17 @@ def check_folder(folderName: str):
 
 # Prints rounded values for each value in each row of the json file
 tourData = load_json("tour_data.json")
-vidcap = cv.VideoCapture("videospin.webm")
+videoName = "videospin.webm"
+vidcap = cv.VideoCapture(videoName)
 totalFrames = vidcap.get(7)
 # Creates a list of tuples with all timestamps and y absolute rotations (relevant rotation). 
 # Once this is in radians instead of degrees, multiply row[9] by np.pi/180
 rotations = np.array([(row[9], row[0]) for row in tourData[::]])
 totalMilli = rotations[-1][1]
-print("Total milli", totalMilli)
+
 # Sorts the array by orientation ascending (starts around 0, ends around 360)
 rotations = rotations[rotations[:, 0].argsort()]
+print("[INFO]: Rotations Sorted")
 
 # Printing scatter plot of index against rotation
 # plt.scatter(range(len(rotations)), rotations[:,0])
@@ -121,4 +127,22 @@ rotations = rotations[rotations[:, 0].argsort()]
 # Want an image every 12 or so degrees
 timestamps = np.array(select_timestamps(rotations, 12))
 frames = convert_milli_to_frames(timestamps, totalMilli, totalFrames)
-load_video_frames(vidcap, frames)
+images = load_video_frames(vidcap, frames, 1, True)
+print("[INFO]: Images gathered")
+print("[INFO]: Stiching images...")
+
+start_time = time.time()
+stitcher = cv.Stitcher_create()
+(status,result) = stitcher.stitch(images)
+if (status == 0):
+    print(f"[SUCCESS]: Image Sphere Generated for {videoName}")
+    cv.imwrite(f"Stitches/stitch-{videoName}.jpg", result)
+    print(f"[INFO]: Time elapsed to stitch {videoName} was {round(time.time()-start_time, 3)} seconds.")
+    cv.imshow(videoName,result)
+    cv.waitKey(0)
+elif status == 1:
+    print(f"[ERROR] Not enough keypoints in images of {videoName}")
+else: 
+    print(f"[ERROR]: {videoName} Status {status}")
+
+
