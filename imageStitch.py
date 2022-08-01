@@ -178,4 +178,4 @@ if __name__ == "__main__":
     if (check_folder("Data") and check_folder("Stitches")):
         print("[INFO]: All necessary folders exist")
 
-    videoToPanorama(jsonFile, videoFile, scaleCoeff=1)
+    videoToPanorama(load_json(jsonFile), videoFile, scaleCoeff=1)
