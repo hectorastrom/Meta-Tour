@@ -109,7 +109,7 @@ def check_folder(folderName: str):
     return True
 
 
-def video_to_panorama(dataName : str, videoName : str, scaleCoeff = 1, degrees = 12.0):
+def video_to_panorama(dataName : str, videoName : str, scaleCoeff = 1.0, degrees = 12.0):
     """Takes in the name of a json file with odometry data and the name of a video file and stitches a panorama stored in stitches/. Files whose names are inputted should exist in the most outside directory (same directory as imageStitch.py)"""
     tourData = load_json(dataName)
     vidcap = cv.VideoCapture(videoName)
@@ -155,10 +155,10 @@ def video_to_panorama(dataName : str, videoName : str, scaleCoeff = 1, degrees =
         print(f"[ERROR]: {videoName} Status {status}")
         return 1
     
-
-# check for valid num of arguments
-if len(sys.argv) != 4:
-    print("[ERROR]: usage: python imageStitch.py 'datafile.json' 'videofile.webm' float: scaleCoefficient")
+# CHECKS FOR COMMAND LINE ARGUMENTS
+# Check for valid num of arguments
+if len(sys.argv) != 5:
+    print("[ERROR]: usage: python imageStitch.py 'datafile.json' 'videofile.webm' float: scaleCoefficient float: degrees")
     exit(1)
 
 jsonFile = sys.argv[1]
@@ -167,7 +167,14 @@ videoFile = sys.argv[2]
 try:
     scaleCoeff = float(sys.argv[3])
 except ValueError: 
-    print("[ERROR] scale coefficient not float")
+    print("[ERROR] degrees is not a float")
+    exit(1)
+
+# Test if degrees is inputted as an integer
+try:
+    degrees = float(sys.argv[3])
+except ValueError: 
+    print("[ERROR] degrees is not a float")
     exit(1)
 
 if not jsonFile.endswith(".json"): 
@@ -183,4 +190,4 @@ if not videoFile.endswith(".webm"):
 if (check_folder("Data") and check_folder("Stitches")):
     print("[INFO]: All necessary folders exist")
 
-video_to_panorama(jsonFile, videoFile, scaleCoeff=1, degrees=12)
+video_to_panorama(jsonFile, videoFile, scaleCoeff, degrees)
